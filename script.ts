@@ -1,8 +1,9 @@
 import { Model, IModel, domainmodels, IWorkingCopy } from 'mendixmodelsdk';
-import { apikeyAccp, apikeyProd } from "./apikeys";
+import { apikeyAccp, apikeyProd, backendUserName, backendPassword, openId } from "./apikeys";
 
 const username = 'benny.van.reeven@mendix.com';
 
+const endPointDM = "http://localhost:8000";
 const endPointAccp = "https://model-accp.api.mendix.com";
 const endPointProd = "https://model.api.mendix.com";
 
@@ -12,6 +13,7 @@ const endPoint = endPointProd;
 async function main() {
   try {
     const client = Model.createSdkClient({ credentials: { username, apikey }, endPoint });
+    // const client = Model.createSdkClient({ credentials: { username: backendUserName, password: backendPassword, openid: openId }, endPoint });
 
     const workingCopies = await wrapPromise(client, client.getMyWorkingCopies);
     // const workingCopies = await new Promise<IWorkingCopy[]>((resolve, reject) => client.getMyWorkingCopies(resolve, reject));
@@ -30,6 +32,10 @@ async function main() {
       });
     });
 
+    const somePage = model.allPages()[0];
+    const page = await wrapPromise(somePage, somePage.load);
+    console.log(`Title of page ${page.name} is '${page.title.translations.filter(tr => tr.languageCode === "en_US")[0].text}'`);
+
     const firstModule = model.allModules()[0];
     const originalName = firstModule.name;
     firstModule.name = "Bloeb";
@@ -40,10 +46,10 @@ async function main() {
     const entity = domainmodels.Entity.createIn(domainModel);
     entity.name = "JeMoeder";
 
-    setTimeout(() => {
-      entity.name = "JeVader";
-      entity.delete();
-    }, 300);
+    await new Promise((resolve, reject) => setTimeout(resolve, 300));
+
+    entity.name = "JeVader";
+    entity.delete();
   }
   catch (error) {
     console.log('Something went wrong:');
@@ -63,11 +69,10 @@ function wrapPromise1<T, P1>(thisScope: any, action: (param: P1, callback: (valu
   });
 }
 
-const https = require("https");
-const originalRequest: Function = https.request;
-https.request = function(options, callback) {
-  console.log("HTTPS request fired!");
-  console.dir(options);
+const http = require("http");
+const originalRequest: Function = http.request;
+http.request = function (options, callback) {
+  console.log(`${options.method} ${options.host}${options.path}`);
   return originalRequest.apply(this, arguments);
 };
 
